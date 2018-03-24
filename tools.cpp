@@ -17,7 +17,7 @@ VectorXd Tools::CalculateRMSE(const vector<VectorXd> &estimations,
   */
   
 	int eSize=estimations.size(),gSize=ground_truth.size();
-    printf("%d\n",eSize);	
+   // printf("%d\n",eSize);	
 	VectorXd rmse(4); //x,y,x',y'
 	rmse << 0,0,0,0;
 

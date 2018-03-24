@@ -7,11 +7,17 @@ using Eigen::MatrixXd;
 using Eigen::VectorXd;
 using std::vector;
 
+//開始線に「L」または「R」と記されたライダーまたはレーダー測定値のいずれかを表します。
+//次の列は、2つのライダー位置測定値（x、y）または3つのレーダー位置測定値（rho、phi、rho_dot）のいずれかです。
+//次に、タイムスタンプと最後に、x、y、vx、vy、yaw、yawrateの真値を求めます。
+
+//RMSE should be less than or equal to the values [.09, .10, .40, .30].
+
 /**
  * Initializes Unscented Kalman filter
  * This is scaffolding, do not modify
  */
-UKF::UKF() {
+UKF::UKF(unsigned char tgt) {
   // if this is false, laser measurements will be ignored (except during init)
   use_laser_ = true;
 
@@ -31,7 +37,7 @@ UKF::UKF() {
         0, 1, 0, 0, 0,
         0, 0, 1, 0, 0,
         0, 0, 0, 1, 0,
-        0, 0, 0, 0, 1;	///shiba
+        0, 0, 0, 0, 1;	
 		
   // Process noise standard deviation longitudinal acceleration in m/s^2
   std_a_ = 30;
@@ -56,6 +62,18 @@ UKF::UKF() {
   std_radrd_ = 0.3;
   //DO NOT MODIFY measurement noise values above these are provided by the sensor manufacturer.
   
+
+#if 1
+double LO=max(1.0,(double)(tgt&0x0f));
+double HI=max(1.0,(double)((tgt&0xf0)>>4));
+
+///lesson 8-17 :Augmentation Assignment 
+std_a_ = 0.2*HI;
+std_yawdd_ = 0.2*LO;
+
+/// My best estimates:  std_a_ = 0.2*3;	std_yawdd_ = 0.2*3;
+printf("std_a_:%.3lf\t std_yawdd_:%.3lf \n",std_a_,std_yawdd_);
+#endif
   /**
   TODO:
 
@@ -137,7 +155,7 @@ void UKF::Prediction(double delta_t) {
   Complete this function! Estimate the object's location. Modify the state
   vector, x_. Predict sigma points, the state, and the state covariance matrix.
   */
-  
+  ///lesson8-17  Augmentation Assignment
 
   VectorXd x_aug = VectorXd(n_aug_);
   x_aug.fill(0.0);  x_aug.head(n_x_) = x_;	
@@ -155,14 +173,14 @@ void UKF::Prediction(double delta_t) {
   MatrixXd Xsig_aug = MatrixXd( n,  2*n_aug_+1 );
   
   //calculate square root of P
-  MatrixXd A = P_aug.llt().matrixL();
+  MatrixXd L = P_aug.llt().matrixL();
 
   Xsig_aug.col(0) = x_aug;
 
   double lambda_plue_n_x_sqrt = sqrt(lambda_ + n);
   for (int i = 0; i < n; i++){
-      Xsig_aug.col( i + 1 ) = x_aug + lambda_plue_n_x_sqrt * A.col(i);
-      Xsig_aug.col( i + 1 + n ) = x_aug - lambda_plue_n_x_sqrt * A.col(i);
+      Xsig_aug.col( i + 1 ) = x_aug + lambda_plue_n_x_sqrt * L.col(i);
+      Xsig_aug.col( i + 1 + n ) = x_aug - lambda_plue_n_x_sqrt * L.col(i);
   };
 
   
@@ -216,11 +234,10 @@ void UKF::Prediction(double delta_t) {
   //+++++++lesson8-23:	Predicted Mean and Covariance Assignment++++++++++++
   //(1)predicted state mean	
 	
-	//x_.fill(0.0);
-	//for (int i = 0; i < 2 * n_aug_ + 1; i++) {  //iterate over sigma points
-	//	x_ = x_+ weights_(i) * Xsig_pred_.col(i);	
-	//}
-	x_ =  Xsig_pred_* weights_;
+	x_.fill(0.0);
+	for (int i = 0; i < 2 * n_aug_ + 1; i++) {  //iterate over sigma points
+		x_ = x_+ weights_(i) * Xsig_pred_.col(i);	
+	}
 	
 
   //(2)predicted state covariance matrix
